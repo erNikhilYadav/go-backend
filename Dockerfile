@@ -27,10 +27,16 @@ WORKDIR /app
 
 # Copy the binary from the builder stage
 COPY --from=builder /app/main .
-COPY --from=builder /app/waitlist.db .
+
+# Create empty database files for both environments
+RUN touch waitlist.db waitlist_prod.db
 
 # Expose the port
 EXPOSE 8080
+
+# Set default environment variables
+ENV ENVIRONMENT=uat
+ENV PORT=8080
 
 # Run the application
 CMD ["./main"] 

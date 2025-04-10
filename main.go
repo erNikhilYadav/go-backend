@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/nikhilyadav/go-backend/internal/config"
 )
 
 type WaitlistEntry struct {
@@ -19,10 +19,15 @@ type WaitlistEntry struct {
 }
 
 var db *sql.DB
+var cfg *config.Config
 
 func initDB() {
 	var err error
-	db, err = sql.Open("sqlite3", "./waitlist.db")
+	cfg = config.LoadConfig()
+
+	log.Printf("Starting server in %s environment", cfg.Environment)
+
+	db, err = sql.Open("sqlite3", cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -113,12 +118,6 @@ func main() {
 	mux.HandleFunc("/api/waitlist", addToWaitlist)
 	mux.HandleFunc("/api/waitlist/list", getWaitlist)
 
-	// Get port from environment variable or use default
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	log.Printf("Server starting on :%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	log.Printf("Server starting on :%s", cfg.Port)
+	log.Fatal(http.ListenAndServe(":"+cfg.Port, mux))
 }
