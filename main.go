@@ -49,6 +49,25 @@ func initDB() {
 	}
 }
 
+// CORS middleware
+func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Call the next handler
+		next(w, r)
+	}
+}
+
 func addToWaitlist(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		response.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed", errors.New("only POST method is allowed"))
@@ -115,8 +134,8 @@ func main() {
 	defer db.Close()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/waitlist", addToWaitlist)
-	mux.HandleFunc("/api/waitlist/list", getWaitlist)
+	mux.HandleFunc("/api/waitlist", corsMiddleware(addToWaitlist))
+	mux.HandleFunc("/api/waitlist/list", corsMiddleware(getWaitlist))
 
 	log.Printf("Server starting on :%s", cfg.Port)
 	log.Fatal(http.ListenAndServe(":"+cfg.Port, mux))
