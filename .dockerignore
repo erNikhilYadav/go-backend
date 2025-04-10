@@ -3,4 +3,5 @@
 README.md
 .cursor
 *.db
-*.log 
+*.log
+data/ 

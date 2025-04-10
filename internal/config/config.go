@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 )
 
 type Config struct {
@@ -21,11 +22,24 @@ func LoadConfig() *Config {
 		port = "8080"
 	}
 
-	// For SQLite, we'll use a different database file for each environment
-	dbPath := "./waitlist.db"
-	if env == "prod" {
-		dbPath = "./waitlist_prod.db"
+	// Get database directory from environment or use default
+	dbDir := os.Getenv("DATABASE_DIR")
+	if dbDir == "" {
+		dbDir = "./data"
 	}
+
+	// Create database directory if it doesn't exist
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		panic(err)
+	}
+
+	// For SQLite, we'll use a different database file for each environment
+	dbName := "waitlist.db"
+	if env == "prod" {
+		dbName = "waitlist_prod.db"
+	}
+
+	dbPath := filepath.Join(dbDir, dbName)
 
 	return &Config{
 		Environment: env,

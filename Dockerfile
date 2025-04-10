@@ -19,8 +19,10 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o main .
 # Use a smaller image for the final container
 FROM alpine:latest
 
-# Install SQLite
-RUN apk add --no-cache sqlite
+# Install SQLite and create necessary directories
+RUN apk add --no-cache sqlite && \
+    mkdir -p /app/data && \
+    chmod 777 /app/data
 
 # Set the working directory
 WORKDIR /app
@@ -28,8 +30,9 @@ WORKDIR /app
 # Copy the binary from the builder stage
 COPY --from=builder /app/main .
 
-# Create empty database files for both environments
-RUN touch waitlist.db waitlist_prod.db
+# Create database directory and set permissions
+RUN mkdir -p /app/data && \
+    chmod 777 /app/data
 
 # Expose the port
 EXPOSE 8080
@@ -37,6 +40,7 @@ EXPOSE 8080
 # Set default environment variables
 ENV ENVIRONMENT=uat
 ENV PORT=8080
+ENV DATABASE_DIR=/app/data
 
 # Run the application
 CMD ["./main"] 
