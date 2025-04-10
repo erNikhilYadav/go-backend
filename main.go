@@ -3,12 +3,14 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/nikhilyadav/go-backend/internal/config"
+	"github.com/nikhilyadav/go-backend/internal/response"
 )
 
 type WaitlistEntry struct {
@@ -49,49 +51,48 @@ func initDB() {
 
 func addToWaitlist(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		response.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed", errors.New("only POST method is allowed"))
 		return
 	}
 
 	var entry WaitlistEntry
 	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
 	// Basic validation
 	if entry.Email == "" || entry.Name == "" {
-		http.Error(w, "Email and name are required", http.StatusBadRequest)
+		response.ErrorResponse(w, http.StatusBadRequest, "Validation failed", errors.New("email and name are required"))
 		return
 	}
 
 	// Insert into database
 	stmt, err := db.Prepare("INSERT INTO waitlist (email, name) VALUES (?, ?)")
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		response.ErrorResponse(w, http.StatusInternalServerError, "Database error", err)
 		return
 	}
 	defer stmt.Close()
 
 	_, err = stmt.Exec(entry.Email, entry.Name)
 	if err != nil {
-		http.Error(w, "Email already exists", http.StatusConflict)
+		response.ErrorResponse(w, http.StatusConflict, "Email already exists", err)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Successfully added to waitlist"})
+	response.SuccessResponse(w, http.StatusCreated, "Successfully added to waitlist", entry)
 }
 
 func getWaitlist(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		response.ErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed", errors.New("only GET method is allowed"))
 		return
 	}
 
 	rows, err := db.Query("SELECT id, email, name, created_at FROM waitlist ORDER BY created_at DESC")
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		response.ErrorResponse(w, http.StatusInternalServerError, "Database error", err)
 		return
 	}
 	defer rows.Close()
@@ -100,14 +101,13 @@ func getWaitlist(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var entry WaitlistEntry
 		if err := rows.Scan(&entry.ID, &entry.Email, &entry.Name, &entry.CreatedAt); err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
+			response.ErrorResponse(w, http.StatusInternalServerError, "Database error", err)
 			return
 		}
 		entries = append(entries, entry)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(entries)
+	response.SuccessResponse(w, http.StatusOK, "Successfully retrieved waitlist", entries)
 }
 
 func main() {
