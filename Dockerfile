@@ -1,6 +1,9 @@
 # Use the official Go image as a builder
 FROM golang:1.22-alpine AS builder
 
+# Install build dependencies
+RUN apk add --no-cache gcc musl-dev
+
 # Set the working directory
 WORKDIR /app
 
